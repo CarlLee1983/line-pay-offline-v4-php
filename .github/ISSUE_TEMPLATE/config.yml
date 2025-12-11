@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation
+    url: https://github.com/CarlLee1983/line-pay-offline-v4-php#readme
+    about: Check the documentation before opening an issue
+  - name: 🔗 LINE Pay API Documentation
+    url: https://pay.line.me/documents/offline.html
+    about: Official LINE Pay Offline API documentation
+  - name: 💬 Discussions
+    url: https://github.com/CarlLee1983/line-pay-offline-v4-php/discussions
+    about: Ask questions and share ideas

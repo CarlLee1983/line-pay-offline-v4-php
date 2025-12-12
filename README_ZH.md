@@ -33,7 +33,31 @@
 composer require carllee/line-pay-offline-v4
 ```
 
+## 支付流程
+
+```mermaid
+sequenceDiagram
+    participant U as Customer (App)
+    participant P as POS/Server
+    participant L as LINE Pay API
+    
+    U->>P: Show Barcode (OneTimeKey)
+    P->>L: POST /v3/payments/oneTimeKeys/pay
+    alt Success
+        L-->>P: 200 OK (ReturnCode 0000)
+        P->>U: Payment Success
+    else Timeout / Network Error
+        L-->>P: Timeout / 500 Error
+        Note over P,L: CRITICAL: Must Check Status
+        P->>L: GET /v3/payments/orders/{orderId}
+        L-->>P: Status: COMPLETE
+        P->>U: Payment Success
+    end
+```
+
 ## 快速開始
+
+> "✨ **開發者體驗:** 本 SDK 使用 DTOs 和 Enums。您的 IDE 將為請求參數和響應字段提供完整的自動完成，消除 'magic string' 的拼寫錯誤。"
 
 ```php
 <?php
@@ -78,6 +102,8 @@ if ($response['returnCode'] === '0000') {
 ```
 
 ## Laravel 整合
+
+本套件支援 **Laravel Package Discovery**。只需透過 composer 安裝，ServiceProvider 和 Facade 將自動註冊。
 
 ### 設定
 
@@ -263,6 +289,50 @@ try {
 }
 ```
 
+## 常見問題與疑難排解
+
+### ⚠️ 重要：處理逾時（Read Timeout）
+
+LINE Pay Offline API 涉及實際的網路延遲（連接 POS、等待用戶確認）。
+
+**問題：**
+如果回應時間超過您設定的逾時時間，您可能會收到 `ConnectTimeout` 或 `ReadTimeout`（cURL error 28）。
+
+**解決方案：**
+**絕對不要**僅因為逾時就假設付款失敗。交易可能已在 LINE Pay 伺服器上成功，只是您的伺服器放棄等待了。
+
+1. **捕捉錯誤：** 務必捕捉 `LinePayTimeoutError`。
+2. **二次確認：** 立即呼叫 `checkPaymentStatus($orderId)`。
+3. **對帳：** 若 `checkPaymentStatus` 回傳 `COMPLETE`，將訂單視為已付款。
+
+```php
+try {
+    $response = $client->requestPayment(...);
+} catch (LinePayTimeoutError $e) {
+    // 1. 記錄逾時
+    // 2. 從 LINE Pay 檢查實際狀態
+    $status = $client->checkPaymentStatus($orderId);
+    
+    if ($status['info']['status'] === 'COMPLETE') {
+        // 視為成功處理
+    }
+}
+```
+
+### 🚫 OneTimeKey 重複使用（Error 1172）
+
+客戶提供的 `oneTimeKey`（條碼）是**一次性的**，且很快就會過期（通常 5 分鐘）。
+
+* **不要**在第一次請求因邏輯錯誤失敗後，嘗試重複使用條碼進行重試。
+* **不要**使用硬編碼的條碼進行測試；您必須每次從 LINE App 重新產生。
+
+### 💰 金額不符（Error 1106）
+
+呼叫 `capturePayment()` 時，`amount` 必須與授權金額相符（除非您執行的是部分請款，如果允許的話）。
+
+* 確保您的資料庫儲存了確切的授權金額。
+* 可能會發生浮點數精度錯誤；考慮以整數（如分）儲存金額或使用 `bcmath`。
+
 ## 設定選項
 
 | 選項 | 類型 | 必填 | 說明 |
@@ -278,16 +348,7 @@ try {
 
 ### 1. 正確處理逾時
 
-LINE Pay Offline API 最多可能需要 40 秒。逾時後務必檢查狀態：
-
-```php
-try {
-    $response = $client->requestPayment($request);
-} catch (LinePayTimeoutError $e) {
-    // 切勿假設失敗 - 檢查實際狀態
-    $status = $client->checkPaymentStatus($orderId);
-}
-```
+如 **[常見問題與疑難排解](#常見問題與疑難排解)** 段落所述，**絕不**將逾時視為失敗。務必使用 `checkPaymentStatus()` 驗證交易狀態。
 
 ### 2. 驗證付款金額
 

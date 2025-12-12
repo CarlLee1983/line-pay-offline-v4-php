@@ -33,7 +33,31 @@
 composer require carllee/line-pay-offline-v4
 ```
 
+## 支払いフロー
+
+```mermaid
+sequenceDiagram
+    participant U as Customer (App)
+    participant P as POS/Server
+    participant L as LINE Pay API
+    
+    U->>P: Show Barcode (OneTimeKey)
+    P->>L: POST /v3/payments/oneTimeKeys/pay
+    alt Success
+        L-->>P: 200 OK (ReturnCode 0000)
+        P->>U: Payment Success
+    else Timeout / Network Error
+        L-->>P: Timeout / 500 Error
+        Note over P,L: CRITICAL: Must Check Status
+        P->>L: GET /v3/payments/orders/{orderId}
+        L-->>P: Status: COMPLETE
+        P->>U: Payment Success
+    end
+```
+
 ## クイックスタート
+
+> ✨ **開発者体験:** このSDKはDTOとEnumを使用しています。IDEはリクエストパラメータとレスポンスフィールドの完全なオートコンプリートを提供し、「マジック文字列」のタイプミスを排除します。
 
 ```php
 <?php
@@ -78,6 +102,8 @@ if ($response['returnCode'] === '0000') {
 ```
 
 ## Laravel統合
+
+このパッケージは **Laravel Package Discovery** をサポートしています。composerでインストールするだけで、ServiceProviderとFacadeが自動的に登録されます。
 
 ### 設定
 
@@ -263,6 +289,50 @@ try {
 }
 ```
 
+## よくある問題とトラブルシューティング
+
+### ⚠️ 重要：タイムアウトの処理（Read Timeout）
+
+LINE Pay Offline APIは実際のネットワーク遅延（POSへの接続、ユーザー確認の待機）が発生します。
+
+**問題：**
+設定したタイムアウト時間を超えると、`ConnectTimeout` または `ReadTimeout`（cURL error 28）が発生する場合があります。
+
+**解決策：**
+タイムアウトだけで決済失敗と判断しないでください。トランザクションはLINE Payサーバーで成功している可能性があります。
+
+1. **エラーをキャッチ：** 必ず `LinePayTimeoutError` をキャッチ。
+2. **再確認：** すぐに `checkPaymentStatus($orderId)` を呼び出す。
+3. **照合：** `checkPaymentStatus` が `COMPLETE` を返したら注文を支払い済みとして処理。
+
+```php
+try {
+    $response = $client->requestPayment(...);
+} catch (LinePayTimeoutError $e) {
+    // 1. タイムアウトをログ
+    // 2. LINE Payから実際のステータスを確認
+    $status = $client->checkPaymentStatus($orderId);
+    
+    if ($status['info']['status'] === 'COMPLETE') {
+        // 成功として処理
+    }
+}
+```
+
+### 🚫 OneTimeKeyの再利用（Error 1172）
+
+お客様が提供する `oneTimeKey`（バーコード）は**一回限り**で、すぐに期限切れになります（通常5分）。
+
+* ロジックエラーで最初のリクエストが失敗した場合、バーコードを再利用しない。
+* テスト用にハードコードされたバーコードを使用しない。LINEアプリから毎回再生成する。
+
+### 💰 金額不一致（Error 1106）
+
+`capturePayment()` を呼び出すとき、`amount` は承認金額と一致する必要があります。
+
+* データベースに正確な承認金額を保存。
+* 浮動小数点の精度エラーに注意。整数（円単位）で保存するか `bcmath` を使用。
+
 ## 設定オプション
 
 | オプション | 型 | 必須 | 説明 |
@@ -278,16 +348,7 @@ try {
 
 ### 1. タイムアウトを適切に処理
 
-LINE Pay Offline APIは最大40秒かかる場合があります。タイムアウト後は必ずステータスを確認：
-
-```php
-try {
-    $response = $client->requestPayment($request);
-} catch (LinePayTimeoutError $e) {
-    // 失敗と仮定しない - 実際のステータスを確認
-    $status = $client->checkPaymentStatus($orderId);
-}
-```
+**[よくある問題とトラブルシューティング](#よくある問題とトラブルシューティング)** セクションで詳述の通り、タイムアウトを失敗とみなさないでください。必ず `checkPaymentStatus()` でトランザクションステータスを確認してください。
 
 ### 2. 決済金額を検証
 

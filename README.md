@@ -33,7 +33,31 @@ Modern, type-safe LINE Pay Offline V4 API SDK for PHP.
 composer require carllee/line-pay-offline-v4
 ```
 
+## Payment Flow
+
+```mermaid
+sequenceDiagram
+    participant U as Customer (App)
+    participant P as POS/Server
+    participant L as LINE Pay API
+    
+    U->>P: Show Barcode (OneTimeKey)
+    P->>L: POST /v3/payments/oneTimeKeys/pay
+    alt Success
+        L-->>P: 200 OK (ReturnCode 0000)
+        P->>U: Payment Success
+    else Timeout / Network Error
+        L-->>P: Timeout / 500 Error
+        Note over P,L: CRITICAL: Must Check Status
+        P->>L: GET /v3/payments/orders/{orderId}
+        L-->>P: Status: COMPLETE
+        P->>U: Payment Success
+    end
+```
+
 ## Quick Start
+
+> "✨ **Developer Experience:** This SDK uses DTOs and Enums. Your IDE will provide full autocompletion for request parameters and response fields, eliminating 'magic string' typos."
 
 ```php
 <?php
@@ -78,6 +102,8 @@ if ($response['returnCode'] === '0000') {
 ```
 
 ## Laravel Integration
+
+The package supports **Laravel Package Discovery**. Just install it via composer, and the ServiceProvider and Facade will be registered automatically.
 
 ### Configuration
 
@@ -263,6 +289,52 @@ try {
 }
 ```
 
+## Common Pitfalls & Troubleshooting
+
+### ⚠️ Critical: Handling Timeouts (Read Timeout)
+
+LINE Pay Offline API interactions involve real-world network latency (connecting to POS, waiting for user confirmation).
+
+**The Problem:**
+You might receive a `ConnectTimeout` or `ReadTimeout` (cURL error 28) if the response takes longer than your configured timeout settings.
+
+**The Solution:**
+**NEVER** assume the payment failed just because of a timeout. The transaction might have succeeded on LINE Pay's server while your server gave up waiting.
+
+1.  **Catch the Error:** Always catch `LinePayTimeoutError`.
+2.  **Double Check:** Immediately call `checkPaymentStatus($orderId)`.
+3.  **Reconcile:** If `checkPaymentStatus` returns `COMPLETE`, treat the order as paid.
+
+<!-- end list -->
+
+```php
+try {
+    $response = $client->requestPayment(...);
+} catch (LinePayTimeoutError $e) {
+    // 1. Log the timeout
+    // 2. Check actual status from LINE Pay
+    $status = $client->checkPaymentStatus($orderId);
+    
+    if ($status['info']['status'] === 'COMPLETE') {
+        // Handle as success
+    }
+}
+```
+
+### 🚫 OneTimeKey Reuse (Error 1172)
+
+The `oneTimeKey` (barcode) provided by the customer is **single-use only** and expires quickly (usually 5 minutes).
+
+  * **Do not** try to reuse a barcode for a retry if the first request failed with a logic error.
+  * **Do not** use a hardcoded barcode for testing; you must regenerate it from the LINE App each time.
+
+### 💰 Amount Mismatch (Error 1106)
+
+When calling `capturePayment()`, the `amount` must match the authorized amount (unless you are performing a partial capture, if allowed).
+
+  * Ensure your database stores the exact authorized amount.
+  * Floating point precision errors can occur; consider storing amounts as integers (e.g., cents) or using `bcmath`.
+
 ## Configuration Options
 
 | Option | Type | Required | Description |
@@ -278,16 +350,7 @@ try {
 
 ### 1. Handle Timeouts Properly
 
-LINE Pay Offline API can take up to 40 seconds. Always check status after timeout:
-
-```php
-try {
-    $response = $client->requestPayment($request);
-} catch (LinePayTimeoutError $e) {
-    // NEVER assume failure - check actual status
-    $status = $client->checkPaymentStatus($orderId);
-}
-```
+As detailed in the **[Common Pitfalls & Troubleshooting](#common-pitfalls--troubleshooting)** section, **never** treat a timeout as a failure. Always verify the transaction status using `checkPaymentStatus()`.
 
 ### 2. Verify Payment Amounts
 
@@ -329,8 +392,8 @@ composer lint
 
 ## Related Packages
 
-- [line-pay-core-v4](https://github.com/CarlLee1983/line-pay-core-v4-php) - Core SDK (dependency)
-- [line-pay-online-v4](https://github.com/CarlLee1983/line-pay-online-v4-php) - Online Payment SDK
+  - [line-pay-core-v4](https://github.com/CarlLee1983/line-pay-core-v4-php) - Core SDK (dependency)
+  - [line-pay-online-v4](https://github.com/CarlLee1983/line-pay-online-v4-php) - Online Payment SDK
 
 ## License
 
@@ -338,6 +401,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Resources
 
-- [LINE Pay Offline API Documentation](https://pay.line.me/documents/offline.html)
-- [LINE Pay Merchant Center](https://pay.line.me/portal/tw/)
-- [Report Issues](https://github.com/CarlLee1983/line-pay-offline-v4-php/issues)
+  - [LINE Pay Offline API Documentation](https://pay.line.me/documents/offline.html)
+  - [LINE Pay Merchant Center](https://pay.line.me/portal/tw/)
+  - [Report Issues](https://github.com/CarlLee1983/line-pay-offline-v4-php/issues)

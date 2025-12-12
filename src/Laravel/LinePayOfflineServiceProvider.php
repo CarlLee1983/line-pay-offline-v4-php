@@ -41,18 +41,25 @@ class LinePayOfflineServiceProvider extends ServiceProvider implements Deferrabl
             /** @var \Illuminate\Config\Repository $configRepo */
             $configRepo = $app->make('config');
 
-            /** @var array{channel_id?: string, channel_secret?: string, merchant_device_profile_id?: string, merchant_device_type?: string, env?: string, timeout?: int} $config */
+            /** @var array<string, mixed> $config */
             $config = $configRepo->get('linepay-offline', []);
+
+            $channelId = isset($config['channel_id']) && is_string($config['channel_id']) ? $config['channel_id'] : '';
+            $channelSecret = isset($config['channel_secret']) && is_string($config['channel_secret']) ? $config['channel_secret'] : '';
+            $merchantDeviceProfileId = isset($config['merchant_device_profile_id']) && is_string($config['merchant_device_profile_id']) ? $config['merchant_device_profile_id'] : '';
+            $merchantDeviceType = isset($config['merchant_device_type']) && is_string($config['merchant_device_type']) ? $config['merchant_device_type'] : 'POS';
+            $env = isset($config['env']) && is_string($config['env']) ? $config['env'] : 'sandbox';
+            $timeout = isset($config['timeout']) && is_int($config['timeout']) ? $config['timeout'] : 40;
 
             // 驗證必要配置項目
             $missingConfigs = [];
-            if (empty($config['channel_id'] ?? '')) {
+            if ($channelId === '') {
                 $missingConfigs[] = 'channel_id';
             }
-            if (empty($config['channel_secret'] ?? '')) {
+            if ($channelSecret === '') {
                 $missingConfigs[] = 'channel_secret';
             }
-            if (empty($config['merchant_device_profile_id'] ?? '')) {
+            if ($merchantDeviceProfileId === '') {
                 $missingConfigs[] = 'merchant_device_profile_id';
             }
 
@@ -67,22 +74,23 @@ class LinePayOfflineServiceProvider extends ServiceProvider implements Deferrabl
 
             try {
                 $linePayConfig = new LinePayOfflineConfig(
-                    channelId: $config['channel_id'],
-                    channelSecret: $config['channel_secret'],
-                    merchantDeviceProfileId: $config['merchant_device_profile_id'],
-                    merchantDeviceType: $config['merchant_device_type'] ?? 'POS',
-                    env: $config['env'] ?? 'sandbox',
-                    timeout: $config['timeout'] ?? 40
+                    channelId: $channelId,
+                    channelSecret: $channelSecret,
+                    merchantDeviceProfileId: $merchantDeviceProfileId,
+                    merchantDeviceType: $merchantDeviceType,
+                    env: $env,
+                    timeout: $timeout
                 );
 
                 return new LinePayOfflineClient($linePayConfig);
             } catch (LinePayConfigError $e) {
-                // 重新拋出更詳細的錯誤訊息，保留原始例外
-                $enhancedMessage = sprintf(
-                    'Invalid LINE Pay Offline configuration: %s. Please check your config/linepay-offline.php file.',
-                    $e->getMessage()
+                // 重新拋出更詳細的錯誤訊息
+                throw new LinePayConfigError(
+                    sprintf(
+                        'Invalid LINE Pay Offline configuration: %s. Please check your config/linepay-offline.php file.',
+                        $e->getMessage()
+                    )
                 );
-                throw new LinePayConfigError($enhancedMessage, 0, $e);
             }
         });
 

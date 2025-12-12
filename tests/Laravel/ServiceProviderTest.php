@@ -73,41 +73,61 @@ class ServiceProviderTest extends TestCase
 
     public function testMissingChannelIdThrows(): void
     {
-        $this->app->make('config')->set('linepay-offline.channel_id', '');
+        $app = $this->app;
+        $this->assertNotNull($app);
+
+        /** @var Repository $config */
+        $config = $app->make('config');
+        $config->set('linepay-offline.channel_id', '');
 
         $this->expectException(LinePayConfigError::class);
         $this->expectExceptionMessage('Missing required LINE Pay Offline configuration');
 
-        $this->app->make(LinePayOfflineClient::class);
+        $app->make(LinePayOfflineClient::class);
     }
 
     public function testMissingChannelSecretThrows(): void
     {
-        $this->app->make('config')->set('linepay-offline.channel_secret', '');
+        $app = $this->app;
+        $this->assertNotNull($app);
+
+        /** @var Repository $config */
+        $config = $app->make('config');
+        $config->set('linepay-offline.channel_secret', '');
 
         $this->expectException(LinePayConfigError::class);
         $this->expectExceptionMessage('Missing required LINE Pay Offline configuration');
 
-        $this->app->make(LinePayOfflineClient::class);
+        $app->make(LinePayOfflineClient::class);
     }
 
     public function testMissingMerchantDeviceProfileIdThrows(): void
     {
-        $this->app->make('config')->set('linepay-offline.merchant_device_profile_id', '');
+        $app = $this->app;
+        $this->assertNotNull($app);
+
+        /** @var Repository $config */
+        $config = $app->make('config');
+        $config->set('linepay-offline.merchant_device_profile_id', '');
 
         $this->expectException(LinePayConfigError::class);
         $this->expectExceptionMessage('Missing required LINE Pay Offline configuration');
 
-        $this->app->make(LinePayOfflineClient::class);
+        $app->make(LinePayOfflineClient::class);
     }
 
     public function testInvalidMerchantDeviceTypeThrows(): void
     {
-        $this->app->make('config')->set('linepay-offline.merchant_device_type', 'INVALID');
+        $app = $this->app;
+        $this->assertNotNull($app);
+
+        /** @var Repository $config */
+        $config = $app->make('config');
+        $config->set('linepay-offline.merchant_device_type', 'INVALID');
 
         $this->expectException(LinePayConfigError::class);
         $this->expectExceptionMessage('Invalid LINE Pay Offline configuration');
 
-        $this->app->make(LinePayOfflineClient::class);
+        $app->make(LinePayOfflineClient::class);
     }
 }

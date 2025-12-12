@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace LinePay\Offline;
 
+use InvalidArgumentException;
 use LinePay\Core\LinePayBaseClient;
 use LinePay\Core\LinePayUtils;
 use LinePay\Offline\Config\LinePayOfflineConfig;
@@ -90,11 +91,31 @@ class LinePayOfflineClient extends LinePayBaseClient
      * The payment is completed after this API call (unless capture is separated).
      *
      * @param array<string, mixed> $request Payment request data
+     *                                      Required keys: amount, currency, oneTimeKey, orderId
      *
      * @return array<string, mixed> Payment response with transaction ID
+     *
+     * @throws InvalidArgumentException If required parameters are missing or invalid
      */
     public function requestPayment(array $request): array
     {
+        // 驗證必要參數
+        if (!isset($request['amount']) || !is_int($request['amount']) || $request['amount'] <= 0) {
+            throw new InvalidArgumentException('amount is required and must be a positive integer');
+        }
+
+        if (!isset($request['currency']) || !is_string($request['currency']) || trim($request['currency']) === '') {
+            throw new InvalidArgumentException('currency is required and cannot be empty');
+        }
+
+        if (!isset($request['oneTimeKey']) || !is_string($request['oneTimeKey']) || trim($request['oneTimeKey']) === '') {
+            throw new InvalidArgumentException('oneTimeKey is required and cannot be empty');
+        }
+
+        if (!isset($request['orderId']) || !is_string($request['orderId']) || trim($request['orderId']) === '') {
+            throw new InvalidArgumentException('orderId is required and cannot be empty');
+        }
+
         return $this->sendRequest(
             'POST',
             '/v4/payments/oneTimeKeys/pay',
@@ -136,18 +157,30 @@ class LinePayOfflineClient extends LinePayBaseClient
      * @param string|null $transactionId Transaction ID
      *
      * @return array<string, mixed> Array of authorization information
+     *
+     * @throws InvalidArgumentException If both orderId and transactionId are null
      */
     public function queryAuthorizations(?string $orderId = null, ?string $transactionId = null): array
     {
         $params = [];
 
         if ($orderId !== null) {
+            if (trim($orderId) === '') {
+                throw new InvalidArgumentException('orderId cannot be empty');
+            }
             $params['orderId'] = $orderId;
         }
 
         if ($transactionId !== null) {
+            if (trim($transactionId) === '') {
+                throw new InvalidArgumentException('transactionId cannot be empty');
+            }
             LinePayUtils::validateTransactionId($transactionId);
             $params['transactionId'] = $transactionId;
+        }
+
+        if (empty($params)) {
+            throw new InvalidArgumentException('Either orderId or transactionId must be provided');
         }
 
         return $this->sendRequest(
@@ -218,18 +251,30 @@ class LinePayOfflineClient extends LinePayBaseClient
      * @param string|null $transactionId Transaction ID
      *
      * @return array<string, mixed> Array of payment details
+     *
+     * @throws InvalidArgumentException If both orderId and transactionId are null
      */
     public function retrievePaymentDetails(?string $orderId = null, ?string $transactionId = null): array
     {
         $params = [];
 
         if ($orderId !== null) {
+            if (trim($orderId) === '') {
+                throw new InvalidArgumentException('orderId cannot be empty');
+            }
             $params['orderId'] = $orderId;
         }
 
         if ($transactionId !== null) {
+            if (trim($transactionId) === '') {
+                throw new InvalidArgumentException('transactionId cannot be empty');
+            }
             LinePayUtils::validateTransactionId($transactionId);
             $params['transactionId'] = $transactionId;
+        }
+
+        if (empty($params)) {
+            throw new InvalidArgumentException('Either orderId or transactionId must be provided');
         }
 
         return $this->sendRequest(

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace LinePay\Offline\Tests\Laravel;
 
 use Illuminate\Config\Repository;
+use LinePay\Core\Errors\LinePayConfigError;
 use LinePay\Offline\Laravel\LinePayOfflineServiceProvider;
 use LinePay\Offline\LinePayOfflineClient;
 use Orchestra\Testbench\TestCase;
@@ -68,5 +69,45 @@ class ServiceProviderTest extends TestCase
         $this->assertEquals('POS', config('linepay-offline.merchant_device_type'));
         $this->assertEquals('sandbox', config('linepay-offline.env'));
         $this->assertEquals(40, config('linepay-offline.timeout'));
+    }
+
+    public function testMissingChannelIdThrows(): void
+    {
+        $this->app->make('config')->set('linepay-offline.channel_id', '');
+
+        $this->expectException(LinePayConfigError::class);
+        $this->expectExceptionMessage('Missing required LINE Pay Offline configuration');
+
+        $this->app->make(LinePayOfflineClient::class);
+    }
+
+    public function testMissingChannelSecretThrows(): void
+    {
+        $this->app->make('config')->set('linepay-offline.channel_secret', '');
+
+        $this->expectException(LinePayConfigError::class);
+        $this->expectExceptionMessage('Missing required LINE Pay Offline configuration');
+
+        $this->app->make(LinePayOfflineClient::class);
+    }
+
+    public function testMissingMerchantDeviceProfileIdThrows(): void
+    {
+        $this->app->make('config')->set('linepay-offline.merchant_device_profile_id', '');
+
+        $this->expectException(LinePayConfigError::class);
+        $this->expectExceptionMessage('Missing required LINE Pay Offline configuration');
+
+        $this->app->make(LinePayOfflineClient::class);
+    }
+
+    public function testInvalidMerchantDeviceTypeThrows(): void
+    {
+        $this->app->make('config')->set('linepay-offline.merchant_device_type', 'INVALID');
+
+        $this->expectException(LinePayConfigError::class);
+        $this->expectExceptionMessage('Invalid LINE Pay Offline configuration');
+
+        $this->app->make(LinePayOfflineClient::class);
     }
 }

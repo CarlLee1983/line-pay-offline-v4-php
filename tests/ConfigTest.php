@@ -73,4 +73,84 @@ class ConfigTest extends TestCase
 
         $this->assertEquals('production', $config->getEnv());
     }
+
+    public function testEmptyChannelIdThrows(): void
+    {
+        $this->expectException(LinePayConfigError::class);
+        $this->expectExceptionMessage('channelId is required');
+
+        new LinePayOfflineConfig(
+            channelId: '',
+            channelSecret: 'test-channel-secret',
+            merchantDeviceProfileId: 'POS-001'
+        );
+    }
+
+    public function testWhitespaceChannelIdThrows(): void
+    {
+        $this->expectException(LinePayConfigError::class);
+        $this->expectExceptionMessage('channelId is required');
+
+        new LinePayOfflineConfig(
+            channelId: '   ',
+            channelSecret: 'test-channel-secret',
+            merchantDeviceProfileId: 'POS-001'
+        );
+    }
+
+    public function testEmptyChannelSecretThrows(): void
+    {
+        $this->expectException(LinePayConfigError::class);
+        $this->expectExceptionMessage('channelSecret is required');
+
+        new LinePayOfflineConfig(
+            channelId: 'test-channel-id',
+            channelSecret: '',
+            merchantDeviceProfileId: 'POS-001'
+        );
+    }
+
+    public function testWhitespaceChannelSecretThrows(): void
+    {
+        $this->expectException(LinePayConfigError::class);
+        $this->expectExceptionMessage('channelSecret is required');
+
+        new LinePayOfflineConfig(
+            channelId: 'test-channel-id',
+            channelSecret: '   ',
+            merchantDeviceProfileId: 'POS-001'
+        );
+    }
+
+    public function testInvalidMerchantDeviceTypeThrows(): void
+    {
+        $this->expectException(LinePayConfigError::class);
+        $this->expectExceptionMessage('merchantDeviceType must be one of');
+
+        new LinePayOfflineConfig(
+            channelId: 'test-channel-id',
+            channelSecret: 'test-channel-secret',
+            merchantDeviceProfileId: 'POS-001',
+            merchantDeviceType: 'INVALID'
+        );
+    }
+
+    public function testValidMerchantDeviceTypes(): void
+    {
+        $configPos = new LinePayOfflineConfig(
+            channelId: 'test-channel-id',
+            channelSecret: 'test-channel-secret',
+            merchantDeviceProfileId: 'POS-001',
+            merchantDeviceType: 'POS'
+        );
+        $this->assertEquals('POS', $configPos->merchantDeviceType);
+
+        $configKiosk = new LinePayOfflineConfig(
+            channelId: 'test-channel-id',
+            channelSecret: 'test-channel-secret',
+            merchantDeviceProfileId: 'KIOSK-001',
+            merchantDeviceType: 'KIOSK'
+        );
+        $this->assertEquals('KIOSK', $configKiosk->merchantDeviceType);
+    }
 }

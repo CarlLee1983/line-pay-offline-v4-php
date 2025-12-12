@@ -12,12 +12,12 @@
 ## 功能特色
 
 - ✅ **PHP 8.1+** 嚴格類型和枚舉
+- ✅ **Laravel 整合** - ServiceProvider、Facade、IoC 支援
 - ✅ **POS/Kiosk 終端支援** - 零售和餐飲服務
 - ✅ **一次性金鑰付款** - 掃描客戶條碼
 - ✅ **完整 API 支援** - 付款、請款、取消、退款
 - ✅ **類型安全枚舉** - Currency、PaymentStatus 等
 - ✅ **PHPStan Level Max** - 嚴格靜態分析
-- ✅ **PSR-4 自動載入** - Composer 相容
 - ✅ **基於核心 SDK** - 與 Online SDK 共享程式碼
 
 ## 系統需求
@@ -75,6 +75,75 @@ if ($response['returnCode'] === '0000') {
     echo "付款成功！\n";
     echo "交易 ID: " . $response['info']['transactionId'] . "\n";
 }
+```
+
+## Laravel 整合
+
+### 設定
+
+發布設定檔：
+
+```bash
+php artisan vendor:publish --tag=linepay-offline-config
+```
+
+在 `.env` 中加入：
+
+```env
+LINE_PAY_CHANNEL_ID=your-channel-id
+LINE_PAY_CHANNEL_SECRET=your-channel-secret
+LINE_PAY_MERCHANT_DEVICE_ID=POS-001
+LINE_PAY_MERCHANT_DEVICE_TYPE=POS
+LINE_PAY_ENV=sandbox
+LINE_PAY_TIMEOUT=40
+```
+
+### 使用依賴注入
+
+```php
+namespace App\Http\Controllers;
+
+use LinePay\Offline\LinePayOfflineClient;
+use LinePay\Offline\Enums\Currency;
+
+class POSController extends Controller
+{
+    public function __construct(
+        private LinePayOfflineClient $linePay
+    ) {}
+
+    public function processPayment(string $oneTimeKey)
+    {
+        $response = $this->linePay->requestPayment([
+            'amount' => 100,
+            'currency' => 'TWD',
+            'oneTimeKey' => $oneTimeKey,
+            'orderId' => 'ORDER-' . time(),
+            'packages' => [
+                ['id' => 'PKG-001', 'amount' => 100, 'products' => [
+                    ['name' => '咖啡', 'quantity' => 1, 'price' => 100]
+                ]]
+            ]
+        ]);
+
+        return response()->json($response);
+    }
+}
+```
+
+### 使用 Facade
+
+```php
+use LinePay\Offline\Laravel\LinePayOffline;
+
+// 請求付款
+$response = LinePayOffline::requestPayment($request);
+
+// 檢查狀態
+$status = LinePayOffline::checkPaymentStatus($orderId);
+
+// 退款
+$response = LinePayOffline::refundPayment($orderId, 50);
 ```
 
 ## API 方法

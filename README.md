@@ -12,12 +12,12 @@ Modern, type-safe LINE Pay Offline V4 API SDK for PHP.
 ## Features
 
 - ✅ **PHP 8.1+** with strict types and enums
+- ✅ **Laravel Integration** - ServiceProvider, Facade, IoC support
 - ✅ **POS/Kiosk Terminal Support** - For retail and food service
 - ✅ **One-Time Key Payment** - Scan customer's barcode
 - ✅ **Full API Coverage** - Payment, capture, void, refund
 - ✅ **Type-Safe Enums** - Currency, PaymentStatus, etc.
 - ✅ **PHPStan Level Max** - Strict static analysis
-- ✅ **PSR-4 Autoloading** - Composer compatible
 - ✅ **Built on Core SDK** - Shares code with Online SDK
 
 ## Requirements
@@ -75,6 +75,75 @@ if ($response['returnCode'] === '0000') {
     echo "Payment successful!\n";
     echo "Transaction ID: " . $response['info']['transactionId'] . "\n";
 }
+```
+
+## Laravel Integration
+
+### Configuration
+
+Publish the config file:
+
+```bash
+php artisan vendor:publish --tag=linepay-offline-config
+```
+
+Add to your `.env`:
+
+```env
+LINE_PAY_CHANNEL_ID=your-channel-id
+LINE_PAY_CHANNEL_SECRET=your-channel-secret
+LINE_PAY_MERCHANT_DEVICE_ID=POS-001
+LINE_PAY_MERCHANT_DEVICE_TYPE=POS
+LINE_PAY_ENV=sandbox
+LINE_PAY_TIMEOUT=40
+```
+
+### Using Dependency Injection
+
+```php
+namespace App\Http\Controllers;
+
+use LinePay\Offline\LinePayOfflineClient;
+use LinePay\Offline\Enums\Currency;
+
+class POSController extends Controller
+{
+    public function __construct(
+        private LinePayOfflineClient $linePay
+    ) {}
+
+    public function processPayment(string $oneTimeKey)
+    {
+        $response = $this->linePay->requestPayment([
+            'amount' => 100,
+            'currency' => 'TWD',
+            'oneTimeKey' => $oneTimeKey,
+            'orderId' => 'ORDER-' . time(),
+            'packages' => [
+                ['id' => 'PKG-001', 'amount' => 100, 'products' => [
+                    ['name' => 'Coffee', 'quantity' => 1, 'price' => 100]
+                ]]
+            ]
+        ]);
+
+        return response()->json($response);
+    }
+}
+```
+
+### Using Facade
+
+```php
+use LinePay\Offline\Laravel\LinePayOffline;
+
+// Request payment
+$response = LinePayOffline::requestPayment($request);
+
+// Check status
+$status = LinePayOffline::checkPaymentStatus($orderId);
+
+// Refund
+$response = LinePayOffline::refundPayment($orderId, 50);
 ```
 
 ## API Methods

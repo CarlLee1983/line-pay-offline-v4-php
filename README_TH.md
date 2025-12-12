@@ -12,12 +12,12 @@ LINE Pay Offline V4 API SDK สำหรับ PHP ที่ทันสมั�
 ## คุณสมบัติ
 
 - ✅ **PHP 8.1+** พร้อม strict types และ enums
+- ✅ **Laravel Integration** - ServiceProvider, Facade, IoC support
 - ✅ **รองรับเครื่อง POS/Kiosk** - สำหรับร้านค้าปลีกและบริการอาหาร
 - ✅ **ชำระเงินด้วย One-Time Key** - สแกนบาร์โค้ดของลูกค้า
 - ✅ **ครอบคลุม API ทั้งหมด** - ชำระเงิน, capture, void, refund
 - ✅ **Type-Safe Enums** - Currency, PaymentStatus ฯลฯ
 - ✅ **PHPStan Level Max** - การวิเคราะห์แบบ static ที่เข้มงวด
-- ✅ **PSR-4 Autoloading** - ใช้งานได้กับ Composer
 - ✅ **สร้างบน Core SDK** - ใช้โค้ดร่วมกับ Online SDK
 
 ## ความต้องการ
@@ -75,6 +75,75 @@ if ($response['returnCode'] === '0000') {
     echo "ชำระเงินสำเร็จ!\n";
     echo "Transaction ID: " . $response['info']['transactionId'] . "\n";
 }
+```
+
+## การใช้งานกับ Laravel
+
+### การตั้งค่า
+
+เผยแพร่ไฟล์ config:
+
+```bash
+php artisan vendor:publish --tag=linepay-offline-config
+```
+
+เพิ่มใน `.env`:
+
+```env
+LINE_PAY_CHANNEL_ID=your-channel-id
+LINE_PAY_CHANNEL_SECRET=your-channel-secret
+LINE_PAY_MERCHANT_DEVICE_ID=POS-001
+LINE_PAY_MERCHANT_DEVICE_TYPE=POS
+LINE_PAY_ENV=sandbox
+LINE_PAY_TIMEOUT=40
+```
+
+### การใช้ Dependency Injection
+
+```php
+namespace App\Http\Controllers;
+
+use LinePay\Offline\LinePayOfflineClient;
+use LinePay\Offline\Enums\Currency;
+
+class POSController extends Controller
+{
+    public function __construct(
+        private LinePayOfflineClient $linePay
+    ) {}
+
+    public function processPayment(string $oneTimeKey)
+    {
+        $response = $this->linePay->requestPayment([
+            'amount' => 100,
+            'currency' => 'THB',
+            'oneTimeKey' => $oneTimeKey,
+            'orderId' => 'ORDER-' . time(),
+            'packages' => [
+                ['id' => 'PKG-001', 'amount' => 100, 'products' => [
+                    ['name' => 'กาแฟ', 'quantity' => 1, 'price' => 100]
+                ]]
+            ]
+        ]);
+
+        return response()->json($response);
+    }
+}
+```
+
+### การใช้ Facade
+
+```php
+use LinePay\Offline\Laravel\LinePayOffline;
+
+// ขอชำระเงิน
+$response = LinePayOffline::requestPayment($request);
+
+// ตรวจสอบสถานะ
+$status = LinePayOffline::checkPaymentStatus($orderId);
+
+// คืนเงิน
+$response = LinePayOffline::refundPayment($orderId, 50);
 ```
 
 ## API Methods

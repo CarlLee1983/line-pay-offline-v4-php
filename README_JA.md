@@ -12,12 +12,12 @@
 ## 機能
 
 - ✅ **PHP 8.1+** 厳格な型とEnum対応
+- ✅ **Laravel統合** - ServiceProvider、Facade、IoC対応
 - ✅ **POS/Kiosk端末サポート** - 小売・飲食サービス向け
 - ✅ **ワンタイムキー決済** - お客様のバーコードをスキャン
 - ✅ **完全なAPIカバレッジ** - 決済、キャプチャ、取消、返金
 - ✅ **タイプセーフなEnum** - Currency、PaymentStatus など
 - ✅ **PHPStan Level Max** - 厳格な静的解析
-- ✅ **PSR-4オートロード** - Composer対応
 - ✅ **コアSDKベース** - Online SDKとコード共有
 
 ## 要件
@@ -75,6 +75,75 @@ if ($response['returnCode'] === '0000') {
     echo "決済成功！\n";
     echo "取引ID: " . $response['info']['transactionId'] . "\n";
 }
+```
+
+## Laravel統合
+
+### 設定
+
+設定ファイルを公開：
+
+```bash
+php artisan vendor:publish --tag=linepay-offline-config
+```
+
+`.env` に追加：
+
+```env
+LINE_PAY_CHANNEL_ID=your-channel-id
+LINE_PAY_CHANNEL_SECRET=your-channel-secret
+LINE_PAY_MERCHANT_DEVICE_ID=POS-001
+LINE_PAY_MERCHANT_DEVICE_TYPE=POS
+LINE_PAY_ENV=sandbox
+LINE_PAY_TIMEOUT=40
+```
+
+### 依存性注入を使用
+
+```php
+namespace App\Http\Controllers;
+
+use LinePay\Offline\LinePayOfflineClient;
+use LinePay\Offline\Enums\Currency;
+
+class POSController extends Controller
+{
+    public function __construct(
+        private LinePayOfflineClient $linePay
+    ) {}
+
+    public function processPayment(string $oneTimeKey)
+    {
+        $response = $this->linePay->requestPayment([
+            'amount' => 100,
+            'currency' => 'JPY',
+            'oneTimeKey' => $oneTimeKey,
+            'orderId' => 'ORDER-' . time(),
+            'packages' => [
+                ['id' => 'PKG-001', 'amount' => 100, 'products' => [
+                    ['name' => 'コーヒー', 'quantity' => 1, 'price' => 100]
+                ]]
+            ]
+        ]);
+
+        return response()->json($response);
+    }
+}
+```
+
+### Facadeを使用
+
+```php
+use LinePay\Offline\Laravel\LinePayOffline;
+
+// 決済リクエスト
+$response = LinePayOffline::requestPayment($request);
+
+// ステータス確認
+$status = LinePayOffline::checkPaymentStatus($orderId);
+
+// 返金
+$response = LinePayOffline::refundPayment($orderId, 50);
 ```
 
 ## APIメソッド

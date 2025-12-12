@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2025-01-12
+
+### Added
+
+- Enhanced parameter validation for `requestPayment()` method
+  - Validates required parameters: `amount`, `currency`, `oneTimeKey`, `orderId`
+  - Validates `amount` must be a positive integer
+- Enhanced validation for `queryAuthorizations()` and `retrievePaymentDetails()`
+  - Requires at least one of `orderId` or `transactionId` to be provided
+  - Validates parameters are not empty strings
+- Enhanced configuration validation in `LinePayOfflineConfig`
+  - Validates `channelId` and `channelSecret` cannot be empty
+  - Validates `merchantDeviceType` must be one of: `POS`, `KIOSK`
+- Enhanced configuration validation in `LinePayOfflineServiceProvider`
+  - Provides clear error messages for missing configuration
+  - Validates configuration before creating client instance
+
+### Improved
+
+- Enhanced error messages for better debugging experience
+- Added comprehensive PHPDoc comments to all Enum classes
+- Improved code robustness with additional validation layers
+
+### Testing
+
+- Added 21 new test cases covering all validation scenarios
+- Test suite expanded from 17 to 38 tests (85 assertions)
+- 100% test coverage for all validation logic
+
 ## [1.0.0] - 2024-12-11
 
 ### Added
@@ -40,5 +69,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires `carllee/line-pay-core-v4` ^1.0
 - PHP 8.1+ required
 
-[Unreleased]: https://github.com/CarlLee1983/line-pay-offline-v4-php/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/CarlLee1983/line-pay-offline-v4-php/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/CarlLee1983/line-pay-offline-v4-php/compare/v1.1.0...v1.2.0
 [1.0.0]: https://github.com/CarlLee1983/line-pay-offline-v4-php/releases/tag/v1.0.0

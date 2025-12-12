@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2025-12-12
+
+### Improved
+
+- Enhanced internationalization (i18n) documentation
+  - Added "Common Pitfalls & Troubleshooting" section to all README files (EN/ZH/JA/TH)
+  - Added Laravel Package Discovery description
+  - Updated Best Practices to reference troubleshooting section
+  - Synchronized content across all language versions
+
+### Fixed
+
+- Fixed PHPStan errors in `ServiceProviderTest` and `LinePayOfflineServiceProvider`
+- Improved code quality and static analysis compliance
+
+### Documentation
+
+- Enhanced README files with comprehensive troubleshooting guide
+- Improved multi-language documentation consistency
+- Added package discovery instructions for Laravel users
+
 ## [1.2.0] - 2025-01-12
 
 ### Added
@@ -69,6 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires `carllee/line-pay-core-v4` ^1.0
 - PHP 8.1+ required
 
-[Unreleased]: https://github.com/CarlLee1983/line-pay-offline-v4-php/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/CarlLee1983/line-pay-offline-v4-php/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/CarlLee1983/line-pay-offline-v4-php/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/CarlLee1983/line-pay-offline-v4-php/compare/v1.1.0...v1.2.0
 [1.0.0]: https://github.com/CarlLee1983/line-pay-offline-v4-php/releases/tag/v1.0.0
